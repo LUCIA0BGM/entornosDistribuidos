@@ -15,7 +15,8 @@ CAPACIDAD_MAXIMA = 3
 
 pending_orders = []     # Pedidos en espera
 prepared_orders = []    # Pedidos preparados en la cocina
-delivering_orders = []  # Pedidos que el robot está llevando
+delivering_orders = []  # Pedidos que el robot está llevando actualmente
+delivered_orders = []   # Pedidos ya entregados (para depuración)
 
 running = True
 
@@ -45,35 +46,44 @@ class Restaurante:
 
 restaurante = Restaurante()
 
-
 # FUNCIONES
 def move_robot():
     global robot_target
     while running:
-        if len(delivering_orders) == 0 and len(prepared_orders) > 0:
+        if not delivering_orders and len(prepared_orders) >= CAPACIDAD_MAXIMA:
             # Recoger pedidos de la cocina cuando el robot no tenga más entregas pendientes
             print("El robot va a recoger nuevos pedidos.")
             robot_target[:] = [400, 50]  # Vuelve a la cocina
             while robot_pos != list(robot_target):
                 time.sleep(0.05)
 
-            while prepared_orders and len(delivering_orders) < CAPACIDAD_MAXIMA:
-                delivering_orders.append(prepared_orders.pop(0))
-                print(f"Robot recogió pedido para mesa {delivering_orders[-1]}")
+            # Solo recoge 3 pedidos a la vez
+            for _ in range(min(CAPACIDAD_MAXIMA, len(prepared_orders))):
+                pedido = prepared_orders.pop(0)
+                delivering_orders.append(pedido)
+                print(f"Robot recogió pedido para mesa {pedido}")
 
         if delivering_orders:
-            mesa_numero = delivering_orders.pop(0)  # Saca un pedido de los que lleva
-            destino = restaurante.get_posicion_mesa(mesa_numero)
+            pedido_actual = delivering_orders[0]  # Mantener el pedido en la lista hasta que se entregue
+            destino = restaurante.get_posicion_mesa(pedido_actual)
+
             if destino:
-                print(f"Robot llevando pedido a la mesa {mesa_numero}")
+                print(f"Robot llevando pedido a la mesa {pedido_actual}")
                 robot_target[:] = destino
+
                 while robot_pos != list(robot_target):
                     time.sleep(0.05)
-                print(f"Pedido entregado a la mesa {mesa_numero}")
+
+                print(f"Pedido entregado a la mesa {pedido_actual}")
+                delivered_orders.append(delivering_orders.pop(0))  # Eliminar después de la entrega
                 time.sleep(1)  # Simula tiempo de entrega
 
-            robot_target[:] = [400, 50]  # Regreso a la cocina después de cada entrega
-
+        # Volver a la cocina solo si ya entregó los 3 pedidos
+        if not delivering_orders and len(prepared_orders) >= CAPACIDAD_MAXIMA:
+            print("El robot ha entregado todo y vuelve a la cocina.")
+            robot_target[:] = [400, 50]
+            while robot_pos != list(robot_target):
+                time.sleep(0.05)
 
 def generate_orders():
     while running:
@@ -81,7 +91,7 @@ def generate_orders():
         pending_orders.append(table)  # Añadir pedido a la lista de espera
         print(f"Nuevo pedido para mesa {table}")
 
-        time.sleep(random.randint(2, 5))
+        time.sleep(random.randint(3, 5))
 
         # Simulación de preparación del pedido
         if table in pending_orders:
@@ -89,11 +99,10 @@ def generate_orders():
             prepared_orders.append(table)
             print(f"Pedido para mesa {table} está listo en la cocina.")
 
-
 # Crear el ThreadPoolExecutor
 executor = ThreadPoolExecutor(max_workers=2)
 executor.submit(generate_orders)
-executor.submit(move_robot) 
+executor.submit(move_robot)
 
 # BUCLE PRINCIPAL
 while running:
