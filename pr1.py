@@ -3,6 +3,10 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 import math
+from mesa import Mesa
+from restaurante import Restaurante
+from robot import move_robot
+
 
 pygame.init()
 screen = pygame.display.set_mode((800, 600))
@@ -21,6 +25,7 @@ running = True
 font = pygame.font.Font(None, 24)
 
 # CLASES
+"""""
 class Mesa:
     def __init__(self, numero, x, y):
         self.numero = numero
@@ -45,7 +50,7 @@ class Restaurante:
             if mesa.numero == numero:
                 return mesa.posicion
         return None
-
+"""
 restaurante = Restaurante()
 
 def distancia(p1, p2):
